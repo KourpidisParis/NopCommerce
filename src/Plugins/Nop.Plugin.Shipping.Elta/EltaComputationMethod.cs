@@ -15,17 +15,23 @@ public class EltaComputationMethod : BasePlugin, IShippingRateComputationMethod
     #region Fields
 
     private readonly IWebHelper _webHelper;
+    private readonly IWorkContext _workContext;
     private readonly ISettingService _settingService;
     private readonly ILocalizationService _localizationService;
+    private readonly EltaSettings _eltaSettings;
 
     #endregion
     public EltaComputationMethod(IWebHelper webHelper,
+        IWorkContext workContext,
         ISettingService settingService,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        EltaSettings eltaSettings)
     {
         _webHelper = webHelper;
+        _workContext = workContext;
         _settingService = settingService;
         _localizationService = localizationService;
+        _eltaSettings = eltaSettings;
     }
     #region Ctor
 
@@ -41,18 +47,22 @@ public class EltaComputationMethod : BasePlugin, IShippingRateComputationMethod
         return Task.FromResult<IShipmentTracker>(null);
     }
 
-    public Task<GetShippingOptionResponse> GetShippingOptionsAsync(GetShippingOptionRequest getShippingOptionRequest)
+    public async Task<GetShippingOptionResponse> GetShippingOptionsAsync(GetShippingOptionRequest getShippingOptionRequest)
     {
+        //title in the customer's language (falls back to the standard value)
+        var language = await _workContext.GetWorkingLanguageAsync();
+        var title = await _localizationService.GetLocalizedSettingAsync(_eltaSettings, x => x.Title, language.Id, 0);
+
         var response = new GetShippingOptionResponse();
         response.ShippingOptions.Add(new ShippingOption
         {
-            Name = "Elta",
-            Rate = 4,
-            Description = "Elta shipping method",
+            Name = title,
+            Rate = _eltaSettings.Cost,
+            Description = title,
             TransitDays = 5
         });
 
-        return Task.FromResult(response);
+        return response;
     }
 
     public override string GetConfigurationPageUrl()
